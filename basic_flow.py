@@ -1,11 +1,12 @@
 import requests
 from prefect import flow, task
+import pandas as pd
 
 BASE_URL = 'https://fantasy.premierleague.com/api/'
 url_path = 'bootstrap-static/'
 
 @flow(log_prints=True)
-def show_data(ply_name: str) -> None:
+def wrangle_data(ply_name: str) -> None:
     '''
     Prints the name, total points, and current cost of a specified player from the Fantasy Premier League.
 
@@ -22,6 +23,8 @@ def show_data(ply_name: str) -> None:
         print(f'players is {player_data['web_name']}, and his total points are {player_data['total_points']}, and total cost is {player_data['now_cost']}')
     else:
         print(f'player {ply_name}, not found')
+
+    save_data_parquet(data=data)
 
 @task
 def pull_players_data(url: str) -> dict or None:
@@ -72,7 +75,23 @@ def find_player(name: str, data: dict) -> dict or None:
         print(f'Malformed data: {e}')
     
     return None
+
+@task
+def save_data_parquet(data: dict) -> pd.DataFrame:
+    '''
+    Saves the whole players data to parquet file.
+
+    Args:
+        data (dict): Fantasy api data.
+    '''
+    try:
+        df = pd.DataFrame(data['elements'])
+        df.to_parquet('players.parquet')
+
+    except KeyError as e:
+        print(f'Error in the process: {e}')
+
         
 if __name__ == "__main__":
     name = 'M.Salah'    
-    show_data(ply_name=name)
+    wrangle_data(ply_name=name)
