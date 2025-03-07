@@ -27,7 +27,7 @@ def wrangle_data(ply_name: str) -> None:
     save_data_parquet(data=data)
 
 @task
-def pull_players_data(url: str) -> dict or None:
+def pull_players_data(url: str) -> dict:
     '''
     Retrieves all player data from the Fantasy Premier League API.
 
@@ -54,7 +54,7 @@ def pull_players_data(url: str) -> dict or None:
         return None
 
 @task
-def find_player(name: str, data: dict) -> dict or None:
+def find_player(name: str, data: dict) -> dict:
     '''
     Searches for a player by their web_name in the Fantasy Premier League API data.
 
@@ -76,7 +76,7 @@ def find_player(name: str, data: dict) -> dict or None:
     
     return None
 
-@task
+@flow(log_prints=True)
 def save_data_parquet(data: dict) -> pd.DataFrame:
     '''
     Saves the whole players data to parquet file.
@@ -87,6 +87,24 @@ def save_data_parquet(data: dict) -> pd.DataFrame:
     try:
         df = pd.DataFrame(data['elements'])
         df.to_parquet('players.parquet')
+        check_parquet_data(df)
+
+    except KeyError as e:
+        print(f'Error in the process: {e}')
+
+@task
+def check_parquet_data(df: pd.DataFrame) -> None:
+    '''
+    Prints basic information regarding df data.
+
+    Args:
+        df (pd.DataFrae): data frame with fantasy api platers.
+    '''
+    try:
+        print(f'total number of records is: {len(df)}')
+        print(f'columns are: {df.columns}')
+        print('preview data')
+        print(df.head())
 
     except KeyError as e:
         print(f'Error in the process: {e}')
