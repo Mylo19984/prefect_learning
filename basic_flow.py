@@ -24,8 +24,9 @@ def wrangle_data(ply_name: str) -> None:
         print(f'players is {player_data['web_name']}, and his total points are {player_data['total_points']}, and total cost is {player_data['now_cost']}')
     else:
         print(f'player {ply_name}, not found')
-
-    save_data_parquet(data=data)
+    
+    file_name = 'players.parquet'
+    save_data_parquet(data=data, file_name=file_name)
     no_weeks = 10
     pull_all_weeks(no_weeks=no_weeks)
 
@@ -49,7 +50,7 @@ def pull_weeks_data(url: str) -> dict:
         response.raise_for_status()
         print('Data fetched successfully!')
         data = response.json()
-        print(data)
+        #print(data)
         return data
     except requests.exceptions.RequestException as e:
         print(f'Failed to fetch data: {e}')    
@@ -69,10 +70,11 @@ def pull_all_weeks(no_weeks: int) -> dict:
         requests.exceptions.RequestException: If the HTTP request fails.
     '''
 
-    for week in range(no_weeks):
-        url_path = f'event/{no_weeks}/live/'
+    for week in range(1,no_weeks):
+        url_path = f'event/{week}/live/'
         data = pull_weeks_data(url_path)
-        print(data['elements'])
+        file_name = f'week_{week}_data.parquet'
+        save_data_parquet(data, file_name=file_name)
 
 @task
 def pull_players_data(url: str) -> dict:
@@ -125,7 +127,7 @@ def find_player(name: str, data: dict) -> dict:
     return None
 
 @flow(log_prints=True)
-def save_data_parquet(data: dict) -> pd.DataFrame:
+def save_data_parquet(data: dict, file_name: str) -> pd.DataFrame:
     '''
     Saves the whole players data to parquet file.
 
@@ -134,7 +136,7 @@ def save_data_parquet(data: dict) -> pd.DataFrame:
     '''
     try:
         df = pd.DataFrame(data['elements'])
-        df.to_parquet('players.parquet')
+        df.to_parquet(file_name)
         check_parquet_data(df)
 
     except KeyError as e:
