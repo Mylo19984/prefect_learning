@@ -2,6 +2,7 @@ import requests
 from prefect import flow, task
 import pandas as pd
 
+
 BASE_URL = 'https://fantasy.premierleague.com/api/'
 url_path = 'bootstrap-static/'
 
@@ -25,6 +26,53 @@ def wrangle_data(ply_name: str) -> None:
         print(f'player {ply_name}, not found')
 
     save_data_parquet(data=data)
+    no_weeks = 10
+    pull_all_weeks(no_weeks=no_weeks)
+
+def pull_weeks_data(url: str) -> dict:
+    '''
+    Retrieves data for one week from the Fantasy Premier League API.
+
+    Args:
+        url (str): The path to the API endpoint relative to the base URL (e.g., 'bootstrap-static/').
+
+    Returns:
+        dict: A dictionary containing the JSON response from the API if successful.
+        None: If the request fails.
+
+    Raises:
+        requests.exceptions.RequestException: If the HTTP request fails.
+    '''
+    full_url = BASE_URL + url
+    try:
+        response = requests.get(full_url)
+        response.raise_for_status()
+        print('Data fetched successfully!')
+        data = response.json()
+        print(data)
+        return data
+    except requests.exceptions.RequestException as e:
+        print(f'Failed to fetch data: {e}')    
+        return None
+
+@task
+def pull_all_weeks(no_weeks: int) -> dict:
+    '''
+    Retrieves data for all weeks from the Fantasy Premier League API.
+
+    Args:
+        no_weeks (int): Number to what weeks user wants to pull the data.
+
+    Returns:
+
+    Raises:
+        requests.exceptions.RequestException: If the HTTP request fails.
+    '''
+
+    for week in range(no_weeks):
+        url_path = f'event/{no_weeks}/live/'
+        data = pull_weeks_data(url_path)
+        print(data['elements'])
 
 @task
 def pull_players_data(url: str) -> dict:
