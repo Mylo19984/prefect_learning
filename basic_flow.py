@@ -1,6 +1,7 @@
 import requests
 from prefect import flow, task
 import pandas as pd
+import os
 
 
 BASE_URL = 'https://fantasy.premierleague.com/api/'
@@ -27,7 +28,7 @@ def wrangle_data(ply_name: str) -> None:
     
     file_name = 'players.parquet'
     save_data_parquet(data=data, file_name=file_name)
-    no_weeks = 10
+    no_weeks = 3
     pull_all_weeks(no_weeks=no_weeks)
 
 def pull_weeks_data(url: str) -> dict:
@@ -57,6 +58,21 @@ def pull_weeks_data(url: str) -> dict:
         return None
 
 @task
+def merge_all_weeks():
+    '''
+    Merges data for all weeks into one parquet file.
+
+    Raises:
+    '''
+
+    folder_path = "weeks_data/" 
+    parquet_files = [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
+
+    df_merge = pd.concat((pd.read_parquet(folder_path + file) for file in parquet_files), ignore_index=True)
+    print(df_merge.head(10))
+    print(f'total count is {len(df_merge)}')
+
+@task
 def pull_all_weeks(no_weeks: int) -> dict:
     '''
     Retrieves data for all weeks from the Fantasy Premier League API.
@@ -70,11 +86,13 @@ def pull_all_weeks(no_weeks: int) -> dict:
         requests.exceptions.RequestException: If the HTTP request fails.
     '''
 
+    # fix the creation folder weeeks_data 
     for week in range(1,no_weeks):
         url_path = f'event/{week}/live/'
         data = pull_weeks_data(url_path)
-        file_name = f'week_{week}_data.parquet'
+        file_name = f'weeks_data/week_{week}_data.parquet'
         save_data_parquet(data, file_name=file_name)
+        merge_all_weeks()
 
 @task
 def pull_players_data(url: str) -> dict:
